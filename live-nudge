@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>라이브 진입 베스트셀링 넛지 프로토타입</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#1a1a2e; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; padding:20px; gap:24px; }
+
+  .header-bar { display:flex; align-items:center; gap:16px; background:rgba(255,255,255,0.06); border-radius:16px; padding:14px 24px; backdrop-filter:blur(10px); }
+  .header-bar h1 { color:#fff; font-size:16px; font-weight:700; }
+  .header-bar p { color:rgba(255,255,255,0.5); font-size:12px; margin-top:2px; }
+
+  .seg-toggle { display:flex; gap:8px; }
+  .seg-btn { padding:10px 20px; border-radius:24px; border:none; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
+  .seg-btn.active { background:#fff; color:#000; box-shadow:0 2px 12px rgba(255,255,255,0.2); }
+  .seg-btn:not(.active) { background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.7); }
+  .seg-btn:hover:not(.active) { background:rgba(255,255,255,0.2); }
+
+  .reset-btn { padding:10px 20px; border-radius:24px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:rgba(255,255,255,0.7); font-size:13px; font-weight:500; cursor:pointer; transition:all .2s; }
+  .reset-btn:hover { background:rgba(255,255,255,0.1); }
+
+  .phone { width:375px; height:812px; background:#000; border-radius:44px; overflow:hidden; position:relative; border:4px solid #333; box-shadow:0 20px 60px rgba(0,0,0,0.5); flex-shrink:0; }
+
+  .status-bar { height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; color:#fff; font-size:12px; font-weight:600; position:relative; z-index:10; }
+
+  .video-bg { position:absolute; inset:0; background:linear-gradient(135deg,#2a1a3e 0%,#1a2a4e 50%,#2a1a3e 100%); }
+  .video-bg::after { content:'🎥'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:60px; opacity:.25; }
+
+  .top-bar { position:relative; z-index:10; display:flex; align-items:center; padding:4px 12px; justify-content:space-between; }
+  .seller-info { display:flex; align-items:center; gap:8px; }
+  .seller-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#FF6B35,#FF2D55); display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .seller-name { color:#fff; font-size:13px; font-weight:600; }
+  .seller-viewers { color:rgba(255,255,255,.6); font-size:11px; }
+  .top-actions { display:flex; gap:8px; align-items:center; }
+  .follow-btn { color:#fff; font-size:11px; background:rgba(255,255,255,.15); padding:4px 10px; border-radius:12px; border:none; cursor:pointer; }
+  .close-btn { background:none; border:none; color:#fff; font-size:20px; cursor:pointer; }
+
+  .info-row { position:relative; z-index:10; padding:8px 16px; display:flex; justify-content:space-between; align-items:center; }
+  .live-badge { background:#FF2D55; color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px; }
+  .elapsed-text { color:rgba(255,255,255,.7); font-size:11px; margin-left:8px; }
+  .timer-pill { background:rgba(255,255,255,.15); padding:4px 10px; border-radius:12px; display:flex; align-items:center; gap:4px; }
+  .timer-count { font-size:11px; font-weight:600; }
+  .timer-hint { color:rgba(255,255,255,.5); font-size:10px; }
+
+  .chat-area { position:absolute; bottom:140px; left:12px; right:80px; z-index:10; }
+  .chat-msg { display:flex; gap:6px; align-items:center; margin-bottom:6px; animation:fadeIn .3s ease; }
+  .chat-avatar { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; }
+  .chat-bubble { background:rgba(0,0,0,.4); border-radius:12px; padding:6px 10px; color:#fff; font-size:12px; }
+
+  .bottom-product { position:absolute; bottom:70px; left:12px; right:12px; z-index:10; }
+  .product-bar { background:rgba(0,0,0,.6); border-radius:12px; padding:10px 12px; display:flex; align-items:center; gap:10px; backdrop-filter:blur(10px); }
+  .product-thumb { width:48px; height:48px; border-radius:8px; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+  .product-bar-info { flex:1; min-width:0; }
+  .product-bar-title { color:#fff; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .product-bar-price { display:flex; align-items:baseline; gap:4px; margin-top:2px; }
+  .product-bar-price .disc { color:#FF2D55; font-size:13px; font-weight:700; }
+  .product-bar-price .price { color:#fff; font-size:13px; font-weight:700; }
+  .buy-btn { background:#FF2D55; border:none; color:#fff; padding:8px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; flex-shrink:0; }
+
+  .bottom-actions { position:absolute; bottom:20px; left:0; right:0; z-index:10; display:flex; justify-content:space-around; padding:0 16px; }
+  .action-icon { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; font-size:18px; }
+
+  /* Overlay */
+  .overlay { position:absolute; inset:0; z-index:50; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; animation:fadeIn .25s ease; cursor:pointer; }
+  .overlay.hidden { display:none; }
+
+  .card { width:300px; background:#fff; border-radius:20px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.5); animation:slideUp .3s ease; cursor:default; }
+  .card-header { padding:18px 16px 0; }
+  .card-badge { display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:10px; color:#fff; }
+  .card-badge.g1 { background:#FF6B35; }
+  .card-badge.g2 { background:#FF2D55; }
+  .card-title { font-size:15px; font-weight:700; color:#222; line-height:1.4; margin-top:8px; }
+
+  .card-body { padding:12px 16px; display:flex; gap:12px; }
+  .card-img { width:100px; height:100px; border-radius:12px; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:48px; flex-shrink:0; position:relative; }
+  .card-img .flag { position:absolute; top:4px; left:4px; font-size:9px; font-weight:700; padding:2px 5px; border-radius:3px; color:#fff; }
+  .card-info { flex:1; }
+  .card-product-name { font-size:13px; color:#333; line-height:1.4; font-weight:500; margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card-original-price { color:#999; font-size:12px; text-decoration:line-through; margin-bottom:2px; }
+  .card-live-price { display:flex; align-items:baseline; gap:4px; }
+  .card-live-price .rate { color:#FF2D55; font-size:18px; font-weight:800; }
+  .card-live-price .amount { font-size:18px; font-weight:800; }
+  .card-meta { margin-top:6px; display:flex; gap:6px; align-items:center; }
+  .card-meta .remaining { color:#FF6B35; font-size:11px; font-weight:600; }
+  .card-meta .orders { color:#999; font-size:11px; }
+
+  .card-cta { padding:0 16px 16px; }
+  .cta-btn { width:100%; height:48px; border-radius:12px; border:none; background:#FF2D55; color:#fff; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:background .15s; }
+  .cta-btn:hover { background:#e6264d; }
+
+  .timer-bar-track { height:4px; background:#f0f0f0; }
+  .timer-bar-fill { height:100%; background:linear-gradient(90deg,#FF2D55,#FF6B35); border-radius:2px; transition:width 50ms linear; }
+
+  .event-toast { position:absolute; top:100px; left:12px; right:12px; z-index:60; background:rgba(0,200,100,.9); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:8px; animation:fadeIn .3s ease; }
+  .event-toast.hidden { display:none; }
+  .event-toast span { color:#fff; font-size:12px; font-weight:500; }
+
+  /* PDP */
+  .pdp { position:absolute; inset:0; background:#fff; z-index:40; animation:fadeIn .2s ease; }
+  .pdp.hidden { display:none; }
+  .pdp-nav { display:flex; align-items:center; padding:8px 16px; border-bottom:1px solid #eee; }
+  .pdp-back { background:none; border:none; font-size:20px; cursor:pointer; }
+  .pdp-title { flex:1; text-align:center; font-weight:600; font-size:15px; }
+  .pdp-img { height:320px; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:80px; }
+  .pdp-info { padding:16px; }
+  .pdp-flags { display:flex; gap:6px; margin-bottom:8px; }
+  .pdp-flags span { font-size:11px; font-weight:700; padding:3px 8px; border-radius:4px; color:#fff; }
+  .pdp-name { font-size:15px; font-weight:500; line-height:1.4; color:#333; margin-bottom:12px; }
+  .pdp-price-row { display:flex; align-items:baseline; gap:6px; margin-bottom:4px; }
+  .pdp-price-row .rate { color:#FF2D55; font-size:22px; font-weight:800; }
+  .pdp-price-row .price { font-size:22px; font-weight:800; }
+  .pdp-original { color:#999; font-size:13px; text-decoration:line-through; }
+  .pdp-rating { margin-top:12px; display:flex; align-items:center; gap:4px; }
+  .pdp-rating .star { color:#FFB800; font-size:13px; }
+  .pdp-rating .rev { color:#999; font-size:12px; }
+  .pdp-bottom { position:absolute; bottom:0; left:0; right:0; padding:12px 16px 32px; background:#fff; border-top:1px solid #eee; display:flex; gap:10px; }
+  .pdp-heart { width:52px; height:52px; border-radius:12px; border:1px solid #ddd; background:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .pdp-buy { flex:1; height:52px; border-radius:12px; border:none; background:#FF2D55; color:#fff; font-size:16px; font-weight:700; cursor:pointer; }
+
+  .pip { position:absolute; top:60px; right:12px; width:120px; height:170px; border-radius:12px; background:linear-gradient(135deg,#2a1a3e,#1a2a4e); z-index:45; cursor:pointer; box-shadow:0 4px 20px rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .pip.hidden { display:none; }
+  .pip .pip-live { position:absolute; top:6px; left:6px; background:#FF2D55; color:#fff; font-size:8px; font-weight:700; padding:2px 5px; border-radius:3px; }
+  .pip .pip-icon { font-size:28px; }
+
+  /* Feed */
+  .feed { position:absolute; inset:0; z-index:70; background:#000; }
+  .feed.hidden { display:none; }
+  .feed-tabs { display:flex; padding:10px 16px 0; gap:16px; }
+  .feed-tabs span:first-child { color:#fff; font-weight:700; font-size:16px; border-bottom:2px solid #fff; padding-bottom:8px; }
+  .feed-tabs span:last-child { color:rgba(255,255,255,.5); font-weight:500; font-size:16px; padding-bottom:8px; }
+  .feed-cards { padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .feed-card { border-radius:16px; overflow:hidden; background:#1a1a1a; position:relative; cursor:pointer; }
+  .feed-card-img { height:220px; background:linear-gradient(135deg,#2a1a3e,#1a2a4e); display:flex; align-items:center; justify-content:center; position:relative; }
+  .feed-card-img.alt { background:linear-gradient(135deg,#1a3a2e,#2a2a1e); height:180px; }
+  .feed-badges { position:absolute; top:12px; left:12px; display:flex; gap:6px; }
+  .feed-badges span { font-size:11px; padding:3px 8px; border-radius:4px; }
+  .feed-card-bottom { position:absolute; bottom:0; left:0; right:0; padding:20px 12px 12px; background:linear-gradient(transparent,rgba(0,0,0,.8)); }
+  .feed-card-bottom .title { color:#fff; font-size:14px; font-weight:600; }
+  .feed-card-bottom .sub { color:rgba(255,255,255,.6); font-size:12px; margin-top:4px; }
+  .feed-instruction { position:absolute; bottom:40px; left:0; right:0; text-align:center; }
+  .feed-instruction span { background:rgba(255,255,255,.1); display:inline-block; padding:10px 20px; border-radius:20px; color:rgba(255,255,255,.7); font-size:13px; }
+
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(30px) scale(.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header-bar">
+  <div>
+    <h1>🛍️ 라이브 진입 베스트셀링 넛지 — 인터랙티브 프로토타입</h1>
+    <p>라이브 카드 탭 → 10초 후 상품 카드 자동 노출 → 10초 후 자동 닫힘 | 딤 탭으로 수동 닫기 | CTA → PIP + PDP</p>
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;">
+  <div class="seg-toggle">
+    <button class="seg-btn active" id="segBtn1" onclick="setSegment('g1')">① 방송 10분 이내 진입</button>
+    <button class="seg-btn" id="segBtn2" onclick="setSegment('g2')">② 방송 10분 이후 진입</button>
+  </div>
+  <button class="reset-btn" onclick="resetAll()">↻ 처음부터 다시</button>
+</div>
+
+<!-- Phone Frame -->
+<div class="phone" id="phone">
+
+  <!-- Feed Screen -->
+  <div class="feed" id="feedScreen">
+    <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+    <div class="feed-tabs"><span>추천</span><span>팔로잉</span></div>
+    <div class="feed-cards">
+      <div class="feed-card" onclick="enterLive()">
+        <div class="feed-card-img">
+          <div class="feed-badges">
+            <span style="background:#FF2D55;color:#fff;font-weight:700;">LIVE</span>
+            <span style="background:rgba(0,0,0,.5);color:#fff;">👤 1,247</span>
+          </div>
+          <span style="font-size:48px;">🎥</span>
+          <div class="feed-card-bottom">
+            <div class="title">금주7세 마감세일! 올라타느냐 마느냐!</div>
+            <div class="sub">뱀뱀BEMBEM</div>
+          </div>
+        </div>
+      </div>
+      <div class="feed-card">
+        <div class="feed-card-img alt">
+          <div class="feed-badges">
+            <span style="background:#FF2D55;color:#fff;font-weight:700;">LIVE</span>
+            <span style="background:rgba(0,0,0,.5);color:#fff;">👤 856</span>
+          </div>
+          <span style="font-size:40px;">👗</span>
+          <div class="feed-card-bottom"><div class="title">봄 신상 원피스 특가전</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="feed-instruction"><span>👆 라이브 카드를 탭하여 진입하세요</span></div>
+  </div>
+
+  <!-- Live Player Screen -->
+  <div class="video-bg" id="videoBg"></div>
+
+  <div id="liveUI" style="display:none;">
+    <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+
+    <div class="top-bar">
+      <div class="seller-info">
+        <div class="seller-avatar">🏪</div>
+        <div>
+          <div class="seller-name">뱀뱀BEMBEM</div>
+          <div class="seller-viewers">👤 1,247명 시청</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="follow-btn">♡ 팔로우</button>
+        <button class="close-btn" onclick="resetAll()">✕</button>
+      </div>
+    </div>
+
+    <div class="info-row">
+      <div style="display:flex;align-items:center;">
+        <span class="live-badge">LIVE</span>
+        <span class="elapsed-text" id="elapsedText">방송 시작 7분 경과</span>
+      </div>
+      <div class="timer-pill">
+        <span class="timer-count" id="timerCount" style="color:rgba(255,255,255,.8);">진입 0초</span>
+        <span class="timer-hint" id="timerHint">| 카드 10초 후</span>
+      </div>
+    </div>
+
+    <div class="chat-area" id="chatArea"></div>
+
+    <div class="bottom-product">
+      <div class="product-bar">
+        <div class="product-thumb" id="bottomThumb">🧴</div>
+        <div class="product-bar-info">
+          <div class="product-bar-title">31~54%할인! 트레이닝셋업 4종</div>
+          <div class="product-bar-price">
+            <span class="disc">43%</span>
+            <span class="price">453,000원</span>
+          </div>
+        </div>
+        <button class="buy-btn">바로 구매</button>
+      </div>
+    </div>
+
+    <div class="bottom-actions">
+      <div class="action-icon">💬</div>
+      <div class="action-icon">🛒</div>
+      <div class="action-icon">📋</div>
+      <div class="action-icon">🔗</div>
+      <div class="action-icon">❤️</div>
+    </div>
+  </div>
+
+  <!-- Overlay Card -->
+  <div class="overlay hidden" id="overlay" onclick="dismissManual()">
+    <div class="card" onclick="event.stopPropagation()">
+      <div class="card-header">
+        <span class="card-badge g1" id="cardBadge">🔥 셀러 인기상품</span>
+        <div class="card-title" id="cardTitle">셀러의 가장 인기 있는 상품이에요!</div>
+      </div>
+      <div class="card-body">
+        <div class="card-img">
+          <span id="cardEmoji">🧴</span>
+          <span class="flag" id="cardFlag" style="background:#FF6B35;">베스트</span>
+        </div>
+        <div class="card-info">
+          <div class="card-product-name" id="cardName">[스토어 첫구매] VT 리들샷 유니버스 키트 (한정수량)</div>
+          <div class="card-original-price" id="cardOriginal">67,000원</div>
+          <div class="card-live-price">
+            <span class="rate" id="cardRate">63%</span>
+            <span class="amount" id="cardAmount">24,900원</span>
+          </div>
+          <div class="card-meta">
+            <span class="remaining" id="cardRemaining">12개 남음</span>
+            <span class="orders hidden" id="cardOrders">| 127명 주문</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-cta">
+        <button class="cta-btn" onclick="handleCTA()">상품 보기 →</button>
+      </div>
+      <div class="timer-bar-track">
+        <div class="timer-bar-fill" id="timerBarFill" style="width:100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Toast -->
+  <div class="event-toast hidden" id="eventToast">
+    <span>✅</span>
+    <span id="eventText"></span>
+  </div>
+
+  <!-- PDP Screen -->
+  <div class="pdp hidden" id="pdpScreen">
+    <div style="height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:12px;font-weight:600;">
+      <span>9:41</span><span>📶 🔋</span>
+    </div>
+    <div class="pdp-nav">
+      <button class="pdp-back" onclick="closePDP()">←</button>
+      <span class="pdp-title">상품 상세</span>
+      <span style="width:20px;"></span>
+    </div>
+    <div class="pdp-img" id="pdpImg">🧴</div>
+    <div class="pdp-info">
+      <div class="pdp-flags" id="pdpFlags"></div>
+      <div class="pdp-name" id="pdpName"></div>
+      <div class="pdp-price-row">
+        <span class="rate" id="pdpRate"></span>
+        <span class="price" id="pdpPrice"></span>
+      </div>
+      <div class="pdp-original" id="pdpOriginal"></div>
+      <div class="pdp-rating">
+        <span class="star">★ 5.0</span>
+        <span class="rev">리뷰 15</span>
+      </div>
+    </div>
+    <div class="pdp-bottom">
+      <button class="pdp-heart">♡</button>
+      <button class="pdp-buy">구매하기</button>
+    </div>
+  </div>
+
+  <!-- PIP -->
+  <div class="pip hidden" id="pipWindow" onclick="closePDP()">
+    <span class="pip-live">LIVE</span>
+    <span class="pip-icon">🎥</span>
+  </div>
+</div>
+
+<script>
+const data = {
+  g1: { badge:"🔥 셀러 인기상품", badgeClass:"g1", title:"셀러의 가장 인기 있는 상품이에요!", flag:"베스트", flagColor:"#FF6B35", name:"[스토어 첫구매] VT 리들샷 유니버스 키트 (한정수량)", original:"67,000", rate:"63%", live:"24,900", remaining:"12개 남음", orders:"", emoji:"🧴", elapsed:"방송 시작 7분 경과" },
+  g2: { badge:"🏆 실시간 판매 1위", badgeClass:"g2", title:"Live 중에 가장 잘팔리는 상품이에요!", flag:"판매 1위", flagColor:"#FF2D55", name:"이탈리아 벨루어 트레이닝 셋업 (핑크/네이비/베이지)", original:"54,000", rate:"92%", live:"19,900", remaining:"3개 남음", orders:"| 127명 주문", emoji:"👕", elapsed:"방송 시작 25분 경과" }
+};
+
+const chats = [
+  { user:"하이🙌", color:"hsl(0,60%,50%)" },
+  { user:"오늘도 왔어요~", color:"hsl(60,60%,50%)" },
+  { user:"이거 재입고 됐나요?", color:"hsl(120,60%,50%)" },
+  { user:"사이즈 추천해주세요!", color:"hsl(180,60%,50%)" },
+  { user:"배송 얼마나 걸려요?", color:"hsl(240,60%,50%)" }
+];
+
+let seg = "g1";
+let timer = 0;
+let timerInterval = null;
+let cardInterval = null;
+let cardProgress = 100;
+let dismissed = false;
+let toastTimeout = null;
+
+function setSegment(s) {
+  seg = s;
+  document.getElementById("segBtn1").className = "seg-btn" + (s==="g1"?" active":"");
+  document.getElementById("segBtn2").className = "seg-btn" + (s==="g2"?" active":"");
+  updateCardContent();
+  updateElapsed();
+}
+
+function updateCardContent() {
+  const d = data[seg];
+  const badge = document.getElementById("cardBadge");
+  badge.textContent = d.badge;
+  badge.className = "card-badge " + d.badgeClass;
+  document.getElementById("cardTitle").textContent = d.title;
+  document.getElementById("cardEmoji").textContent = d.emoji;
+  const flag = document.getElementById("cardFlag");
+  flag.textContent = d.flag;
+  flag.style.background = d.flagColor;
+  document.getElementById("cardName").textContent = d.name;
+  document.getElementById("cardOriginal").textContent = d.original + "원";
+  document.getElementById("cardRate").textContent = d.rate;
+  document.getElementById("cardAmount").textContent = d.live + "원";
+  document.getElementById("cardRemaining").textContent = d.remaining;
+  const orders = document.getElementById("cardOrders");
+  if (d.orders) { orders.textContent = d.orders; orders.classList.remove("hidden"); }
+  else { orders.classList.add("hidden"); }
+  document.getElementById("bottomThumb").textContent = d.emoji;
+}
+
+function updateElapsed() {
+  document.getElementById("elapsedText").textContent = data[seg].elapsed;
+}
+
+function updatePDP() {
+  const d = data[seg];
+  document.getElementById("pdpImg").textContent = d.emoji;
+  document.getElementById("pdpName").textContent = d.name;
+  document.getElementById("pdpRate").textContent = d.rate;
+  document.getElementById("pdpPrice").textContent = d.live + "원";
+  document.getElementById("pdpOriginal").textContent = d.original + "원";
+  const flags = document.getElementById("pdpFlags");
+  flags.innerHTML = `<span style="background:${d.flagColor}">${d.flag}</span>`;
+  if (d.orders) flags.innerHTML += `<span style="background:#FF2D55">${d.orders.replace("| ","")}</span>`;
+}
+
+function resetAll() {
+  clearInterval(timerInterval);
+  clearInterval(cardInterval);
+  clearTimeout(toastTimeout);
+  timer = 0; dismissed = false; cardProgress = 100;
+  document.getElementById("feedScreen").classList.remove("hidden");
+  document.getElementById("liveUI").style.display = "none";
+  document.getElementById("overlay").classList.add("hidden");
+  document.getElementById("eventToast").classList.add("hidden");
+  document.getElementById("pdpScreen").classList.add("hidden");
+  document.getElementById("pipWindow").classList.add("hidden");
+  document.getElementById("chatArea").innerHTML = "";
+  document.getElementById("timerBarFill").style.width = "100%";
+  document.getElementById("timerCount").style.color = "rgba(255,255,255,.8)";
+  document.getElementById("timerCount").textContent = "진입 0초";
+  document.getElementById("timerHint").textContent = "| 카드 10초 후";
+  document.getElementById("timerHint").style.display = "";
+}
+
+function enterLive() {
+  document.getElementById("feedScreen").classList.add("hidden");
+  document.getElementById("liveUI").style.display = "block";
+  updateCardContent();
+  updateElapsed();
+  timer = 0; dismissed = false;
+
+  timerInterval = setInterval(() => {
+    timer++;
+    document.getElementById("timerCount").textContent = "진입 " + timer + "초";
+    if (timer < 10 && !dismissed) {
+      document.getElementById("timerHint").textContent = "| 카드 " + (10 - timer) + "초 후";
+      document.getElementById("timerHint").style.display = "";
+    } else {
+      document.getElementById("timerHint").style.display = "none";
+    }
+
+    if (timer <= 5) {
+      const area = document.getElementById("chatArea");
+      const c = chats[timer - 1];
+      if (c) {
+        const div = document.createElement("div");
+        div.className = "chat-msg";
+        div.innerHTML = `<div class="chat-avatar" style="background:${c.color}">👤</div><div class="chat-bubble">${c.user}</div>`;
+        area.appendChild(div);
+      }
+    }
+
+    if (timer === 10 && !dismissed) {
+      showCard();
+    }
+  }, 1000);
+}
+
+function showCard() {
+  document.getElementById("timerCount").style.color = "#FF2D55";
+  document.getElementById("overlay").classList.remove("hidden");
+  cardProgress = 100;
+  let elapsed = 0;
+  cardInterval = setInterval(() => {
+    elapsed += 50;
+    cardProgress = Math.max(0, 100 - (elapsed / 10000) * 100);
+    document.getElementById("timerBarFill").style.width = cardProgress + "%";
+    if (elapsed >= 10000) {
+      clearInterval(cardInterval);
+      document.getElementById("overlay").classList.add("hidden");
+      dismissed = true;
+      showToast("card_dismiss_auto (10초 타이머 만료)");
+    }
+  }, 50);
+}
+
+function dismissManual() {
+  clearInterval(cardInterval);
+  document.getElementById("overlay").classList.add("hidden");
+  dismissed = true;
+  showToast("card_dismiss_manual (딤 영역 탭 닫기)");
+}
+
+function handleCTA() {
+  clearInterval(cardInterval);
+  clearInterval(timerInterval);
+  document.getElementById("overlay").classList.add("hidden");
+  dismissed = true;
+  updatePDP();
+  document.getElementById("pdpScreen").classList.remove("hidden");
+  document.getElementById("pipWindow").classList.remove("hidden");
+  showToast("card_cta_click (CTA 클릭 → PIP + PDP 이동)");
+}
+
+function closePDP() {
+  document.getElementById("pdpScreen").classList.add("hidden");
+  document.getElementById("pipWindow").classList.add("hidden");
+}
+
+function showToast(msg) {
+  clearTimeout(toastTimeout);
+  document.getElementById("eventText").textContent = msg;
+  document.getElementById("eventToast").classList.remove("hidden");
+  toastTimeout = setTimeout(() => {
+    document.getElementById("eventToast").classList.add("hidden");
+  }, 3000);
+}
+
+// Init
+updateCardContent();
+</script>
+</body>
+</html>
